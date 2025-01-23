@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FTC Timer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      text-align: center;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 2.5rem;
+      color: #333;
+    }
+    #timer {
+      font-size: 3rem;
+      color: #007BFF;
+      margin: 20px 0;
+    }
+    button {
+      font-size: 1.2rem;
+      padding: 10px 20px;
+      margin: 5px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button.start {
+      background-color: #28a745;
+      color: white;
+    }
+    button.stop {
+      background-color: #dc3545;
+      color: white;
+    }
+    button.reset {
+      background-color: #ffc107;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>FTC Timer</h1>
+  <div id="timer">02:30</div>
+  <button class="start" onclick="startMatch()">Start Match</button>
+  <button class="stop" onclick="stopTimer()">Stop</button>
+  <button class="reset" onclick="resetTimer()">Reset</button>
+
+  <audio id="charge" src="charge.wav"></audio>
+  <audio id="endAuto" src="endauto.wav"></audio>
+  <audio id="pickupControllers" src="pickupcontrollers.wav"></audio>
+  <audio id="countdown321" src="countdown321.wav"></audio>
+  <audio id="fireBell" src="firebell.wav"></audio>
+  <audio id="factWhistle" src="factwhistle.wav"></audio>
+  <audio id="endMatch" src="endmatch.wav"></audio>
+
+  <script>
+    let timerDisplay = document.getElementById("timer");
+    let currentTime = 150; // Match starts at 2:30
+    let timerInterval;
+    let matchPhase = "autonomous"; // Possible values: "autonomous", "teleop", "end"
+    const sounds = {
+      charge: document.getElementById("charge"),
+      endAuto: document.getElementById("endAuto"),
+      pickupControllers: document.getElementById("pickupControllers"),
+      countdown321: document.getElementById("countdown321"),
+      fireBell: document.getElementById("fireBell"),
+      factWhistle: document.getElementById("factWhistle"),
+      endMatch: document.getElementById("endMatch")
+    };
+
+    function formatTime(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function startMatch() {
+      if (!timerInterval) {
+        sounds.charge.play(); // Start of match
+        startAutonomous();
+      }
+    }
+
+    function startAutonomous() {
+      matchPhase = "autonomous";
+      currentTime = 30; // 30 seconds for autonomous
+      updateTimer();
+      currentTime--;
+      timerInterval = setInterval(() => {
+        updateTimer();
+
+        if (currentTime === 0) {
+          clearInterval(timerInterval);
+          sounds.endAuto.play(); // Play immediately when Autonomous ends
+
+          // Transition to teleop
+          setTimeout(() => {
+            sounds.pickupControllers.play();
+          }, 2000);
+
+          // Play countdown321.wav with 3 seconds left in the transition
+          setTimeout(() => {
+            sounds.countdown321.play();
+          }, 5000); // 5 seconds into the 8-second transition
+
+          setTimeout(startTeleop, 8000); // Wait 8 seconds, then start teleop
+        } else {
+          currentTime--;
+        }
+      }, 1000);
+    }
+
+    function startTeleop() {
+      matchPhase = "teleop";
+      currentTime = 120; // 2 minutes for teleop
+      updateTimer();
+      sounds.fireBell.play(); // Play fire bell at teleop start
+      currentTime--;
+      timerInterval = setInterval(() => {
+        updateTimer();
+
+        if (currentTime === 0) {
+          clearInterval(timerInterval);
+          sounds.endMatch.play(); // End of match plays immediately
+          matchPhase = "end";
+        } else if (currentTime === 30) {
+          sounds.factWhistle.play(); // 30 seconds remaining
+        }
+
+        currentTime--;
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    }
+
+    function resetTimer() {
+      stopTimer();
+      matchPhase = "autonomous";
+      currentTime = 150; // Reset to full match time
+      updateTimer();
+    }
+
+    function updateTimer() {
+      timerDisplay.textContent = formatTime(currentTime);
+    }
+
+    // Initialize display
+    updateTimer();
+  </script>
+</body>
+</html>
